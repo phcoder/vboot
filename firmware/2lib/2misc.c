@@ -208,7 +208,7 @@ void vb2_check_recovery(struct vb2_context *ctx)
 		if (ctx->flags & VB2_CONTEXT_S3_RESUME) {
 			if (is_override_target_recovery) {
 				sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
-				sd->flags |= VB2_SD_FLAG_MANUAL_RECOVERY;
+				sd->flags |= (1 << 0);
 				ctx->flags |= VB2_CONTEXT_RECOVERY_MODE;
 			}
 			return;
@@ -219,7 +219,7 @@ void vb2_check_recovery(struct vb2_context *ctx)
 				// Switch to recovery with counter = inf;
 				write_cmos(RECOVERY_OVERRIDE_ADDR, 0xdf);
 				sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
-				sd->flags |= VB2_SD_FLAG_MANUAL_RECOVERY;
+				sd->flags |= (1 << 0);
 				ctx->flags |= VB2_CONTEXT_RECOVERY_MODE;
 				return;
 			} else {
@@ -229,7 +229,7 @@ void vb2_check_recovery(struct vb2_context *ctx)
 		} else {
 			if (is_override_target_recovery) {
 				sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
-				sd->flags |= VB2_SD_FLAG_MANUAL_RECOVERY;
+				sd->flags |= (1 << 0);
 				ctx->flags |= VB2_CONTEXT_RECOVERY_MODE;
 			}
 			if (counter != 0xf) {
