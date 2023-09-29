@@ -151,7 +151,8 @@ vb2_error_t vb2api_fw_phase1(struct vb2_context *ctx)
 	/* Return error if recovery is needed */
 	if (ctx->flags & VB2_CONTEXT_RECOVERY_MODE) {
 		/* Always clear RAM when entering recovery mode */
-		ctx->flags |= VB2_CONTEXT_CLEAR_RAM;
+		if (!(ctx->flags & VB2_CONTEXT_S3_RESUME))
+			ctx->flags |= VB2_CONTEXT_CLEAR_RAM;
 		return VB2_ERROR_API_PHASE1_RECOVERY;
 	}
 

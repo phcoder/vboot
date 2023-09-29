@@ -166,11 +166,78 @@ void vb2api_previous_boot_fail(struct vb2_context *ctx,
 	fail_impl(ctx, reason, subcode, true);
 }
 
+static inline void outb(uint8_t value, uint16_t port)
+{
+	__asm__ __volatile__ ("outb %b0, %w1" : : "a" (value), "Nd" (port));
+}
+
+static inline uint8_t inb(uint16_t port)
+{
+	uint8_t value;
+	__asm__ __volatile__ ("inb %w1, %b0" : "=a"(value) : "Nd" (port));
+	return value;
+}
+
+static uint8_t read_cmos(uint8_t addr)
+{
+	uint16_t port = addr & 0x80 ? 0x72 : 0x70;
+	outb(addr & 0x7f, port);
+	return inb(port + 1);
+}
+
+static void write_cmos(uint8_t addr, uint8_t val)
+{
+	uint16_t port = addr & 0x80 ? 0x72 : 0x70;
+	outb(addr & 0x7f, port);
+	outb(val, port + 1);
+}
+
+#define RECOVERY_OVERRIDE_ADDR 0xf7
+
 void vb2_check_recovery(struct vb2_context *ctx)
 {
 	struct vb2_shared_data *sd = vb2_get_sd(ctx);
 	uint32_t reason = vb2_nv_get(ctx, VB2_NV_RECOVERY_REQUEST);
 	uint32_t subcode = vb2_nv_get(ctx, VB2_NV_RECOVERY_SUBCODE);
+	uint8_t recovery_override = read_cmos(RECOVERY_OVERRIDE_ADDR);
+
+	if ((recovery_override & 0xe0) == 0xc0) {
+		int counter = recovery_override & 0xf;
+		int is_override_target_recovery = !!(recovery_override & 0x10);
+		// S3 resume. Don't decrement counter and don't check if it reached zero
+		if (ctx->flags & VB2_CONTEXT_S3_RESUME) {
+			if (is_override_target_recovery) {
+				sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
+				sd->flags |= VB2_SD_FLAG_MANUAL_RECOVERY;
+				ctx->flags |= VB2_CONTEXT_RECOVERY_MODE;
+			}
+			return;
+		}
+
+		if (counter == 0) {
+			if (!is_override_target_recovery) {
+				// Switch to recovery with counter = inf;
+				write_cmos(RECOVERY_OVERRIDE_ADDR, 0xdf);
+				sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
+				sd->flags |= VB2_SD_FLAG_MANUAL_RECOVERY;
+				ctx->flags |= VB2_CONTEXT_RECOVERY_MODE;
+				return;
+			} else {
+				write_cmos(RECOVERY_OVERRIDE_ADDR, 0xff);
+				// Intentional fallthrough to normal code
+			}
+		} else {
+			if (is_override_target_recovery) {
+				sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
+				sd->flags |= VB2_SD_FLAG_MANUAL_RECOVERY;
+				ctx->flags |= VB2_CONTEXT_RECOVERY_MODE;
+			}
+			if (counter != 0xf) {
+				write_cmos(RECOVERY_OVERRIDE_ADDR, 0xc0 | (is_override_target_recovery << 4) | (counter - 1));
+			}
+			return;
+		}
+	}
 
 	VB2_DEBUG("Recovery reason from previous boot: %#x / %#x\n",
 		  reason, subcode);
