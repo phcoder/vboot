@@ -137,18 +137,11 @@ static int vnc_read;
 
 int vb2_get_nv_storage(enum vb2_nv_param param)
 {
-	VbSharedDataHeader* sh = VbSharedDataRead();
 	struct vb2_context *ctx = get_fake_context();
-
-	if (!sh)
-		return -1;
 
 	/* TODO: locking around NV access */
 	if (!vnc_read) {
-		if (sh && sh->flags & VBSD_NVDATA_V2)
-			ctx->flags |= VB2_CONTEXT_NVDATA_V2;
 		if (0 != vb2_read_nv_storage(ctx)) {
-			free(sh);
 			return -1;
 		}
 		vb2_nv_init(ctx);
@@ -159,23 +152,14 @@ int vb2_get_nv_storage(enum vb2_nv_param param)
 		vnc_read = 1;
 	}
 
-	free(sh);
 	return (int)vb2_nv_get(ctx, param);
 }
 
 int vb2_set_nv_storage(enum vb2_nv_param param, int value)
 {
-	VbSharedDataHeader* sh = VbSharedDataRead();
 	struct vb2_context *ctx = get_fake_context();
 
-	if (!sh)
-		return -1;
-
-	/* TODO: locking around NV access */
-	if (sh && sh->flags & VBSD_NVDATA_V2)
-		ctx->flags |= VB2_CONTEXT_NVDATA_V2;
 	if (0 != vb2_read_nv_storage(ctx)) {
-		free(sh);
 		return -1;
 	}
 	vb2_nv_init(ctx);
@@ -184,13 +168,11 @@ int vb2_set_nv_storage(enum vb2_nv_param param, int value)
 	if (ctx->flags & VB2_CONTEXT_NVDATA_CHANGED) {
 		vnc_read = 0;
 		if (0 != vb2_write_nv_storage(ctx)) {
-			free(sh);
 			return -1;
 		}
 	}
 
 	/* Success */
-	free(sh);
 	return 0;
 }
 
