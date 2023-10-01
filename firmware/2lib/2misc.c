@@ -216,17 +216,12 @@ void vb2_check_recovery(struct vb2_context *ctx)
 		}
 
 		if (counter == 0) {
-			if (!is_override_target_recovery) {
-				// Switch to recovery with counter = inf;
-				write_cmos(RECOVERY_OVERRIDE_ADDR, 0xdf);
-				sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
-				sd->flags |= COMPATIBILITY_VB2_SD_FLAG_MANUAL_RECOVERY;
-				ctx->flags |= VB2_CONTEXT_RECOVERY_MODE;
-				return;
-			} else {
-				write_cmos(RECOVERY_OVERRIDE_ADDR, 0xff);
-				// Intentional fallthrough to normal code
-			}
+			// Switch to recovery with counter = inf;
+			write_cmos(RECOVERY_OVERRIDE_ADDR, 0xdf);
+			sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
+			sd->flags |= COMPATIBILITY_VB2_SD_FLAG_MANUAL_RECOVERY;
+			ctx->flags |= VB2_CONTEXT_RECOVERY_MODE;
+			return;
 		} else {
 			if (is_override_target_recovery) {
 				sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
@@ -238,6 +233,11 @@ void vb2_check_recovery(struct vb2_context *ctx)
 			}
 			return;
 		}
+	} else {
+		sd->recovery_reason = VB2_RECOVERY_RO_MANUAL;
+		sd->flags |= COMPATIBILITY_VB2_SD_FLAG_MANUAL_RECOVERY;
+		ctx->flags |= VB2_CONTEXT_RECOVERY_MODE;
+		return;
 	}
 
 	VB2_DEBUG("Recovery reason from previous boot: %#x / %#x\n",
